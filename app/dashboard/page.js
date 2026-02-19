@@ -1,50 +1,65 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { auth } from "../firebase";
-import { onAuthStateChanged, signOut } from "firebase/auth";
-import Sidebar from "./sidebar";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "../firebase";
+import Link from "next/link";
 
 export default function Dashboard() {
-  const router = useRouter();
-  const [user, setUser] = useState(null);
+  const [adminCount, setAdminCount] = useState(0);
+  const [staffCount, setStaffCount] = useState(0);
+  const [studentCount, setStudentCount] = useState(0);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (!currentUser) {
-        router.push("/login");
-      } else {
-        setUser(currentUser);
-      }
-    });
+    const unsubAdmin = onSnapshot(
+      collection(db, "users", "init", "admin"),
+      (snapshot) => setAdminCount(snapshot.size)
+    );
 
-    return () => unsubscribe();
-  }, [router]);
+    const unsubStaff = onSnapshot(
+      collection(db, "users", "init", "staff"),
+      (snapshot) => setStaffCount(snapshot.size)
+    );
 
-  const handleLogout = async () => {
-    await signOut(auth);
-    router.push("/login");
-  };
+    const unsubStudent = onSnapshot(
+      collection(db, "users", "init", "students"),
+      (snapshot) => setStudentCount(snapshot.size)
+    );
 
-  if (!user) return <p>Loading...</p>;
+    return () => {
+      unsubAdmin();
+      unsubStaff();
+      unsubStudent();
+    };
+  }, []);
 
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex-1 p-8">
-        <h1 className="text-3xl font-bold mb-4">Welcome, {user.email}</h1>
-        <button
-          onClick={handleLogout}
-          className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-        >
-          Logout
-        </button>
-        <div className="mt-6">
-          {/* Add admin content here */}
-          <p>Dashboard content goes here.</p>
+    <div>
+      <h1 className="text-2xl font-bold mb-6">Dashboard Overview</h1>
+
+      <div className="grid grid-cols-3 gap-6 mb-8">
+        <div className="p-6 bg-white shadow rounded-xl">
+          <h2>Total Admins</h2>
+          <p className="text-2xl font-bold">{adminCount}</p>
+        </div>
+
+        <div className="p-6 bg-white shadow rounded-xl">
+          <h2>Total Staff</h2>
+          <p className="text-2xl font-bold">{staffCount}</p>
+        </div>
+
+        <div className="p-6 bg-white shadow rounded-xl">
+          <h2>Total Students</h2>
+          <p className="text-2xl font-bold">{studentCount}</p>
         </div>
       </div>
+
+      <Link
+        href="/dashboard/users"
+        className="bg-blue-600 text-white px-6 py-2 rounded-lg"
+      >
+        Manage Users
+      </Link>
     </div>
   );
 }
